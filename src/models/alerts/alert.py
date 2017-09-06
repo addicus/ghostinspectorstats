@@ -2,7 +2,7 @@ import datetime
 import uuid
 import requests
 import src.models.alerts.constants as AlertConstants
-from src.common.database import Database
+from src.common.database import db
 from src.models.items.item import Item
 
 

@@ -1,15 +1,24 @@
 import uuid
-
+import sqlite3
 from flask.ext.login import login_manager
 
-from src.common.database import Database
+from src.common.database import db
 from src.common.utils import Utils
 import src.models.users.errors as UserErrors
 import src.models.users.constants as UserConstants
-from src.models.alerts.alert import Alert
 
 
-class User(object):
+
+class User(db.Model):
+    __tablename__ = 'users'
+
+    _id =db.Column(db.String(80), primary_key=True)
+    username = db.Column(db.String(80))
+    email = db.Column(db.String(80))
+    password = db.Column(db.String(80))
+    permission = db.Column(db.Integer)
+    active = db.Column(db.Integer)
+    authenticated = db.Column(db.Integer)
     def __init__(self, username, email, password, active, permission, authenticated, _id=None):
         self.username = username
         self.email = email
@@ -31,7 +40,7 @@ class User(object):
         :param password: A sha512 hashed password
         :return: True if valid, False if otherwise
         """
-        user_data = Database.find_one(UserConstants.COLLECTION, {"username": username}) #Password in sha512 - >pbkdf2_sha512
+        user_data = User.query.filter_by(username=username).first() #Password in sha512 - >pbkdf2_sha512
         if user_data is None:
             raise UserErrors.UserNotExistsError("Your user does not exist.")
         if not user_data['active']:
@@ -51,20 +60,20 @@ class User(object):
         :param password: sha512-hsahed password
         :return: True if registered successfully, or False otherwise(exceptions can also be raised)
         """
-        user_data = Database.find_one(UserConstants.COLLECTION, {"email": email})
+        user_data = User.query.filter_by(email=email).first()
 
         if user_data is not None:
             raise UserErrors.UserAlreadyRegisteredError("The e-mail you used to register already exists.")
         if not Utils.email_is_valid(email):
             raise UserErrors.InvalidEmailError("The e-mail does not have the right format.")
-        user_data = Database.find_one(UserConstants.COLLECTION, {"username": username})
+        user_data = User.query.filter_by(username=username).first()
         if user_data is not None:
             raise UserErrors.UserAlreadyRegisteredError("The username you used to register already exists.")
         User(username,email, Utils.hash_password(password), active, permission, False).save_to_db()
         return True
 
     def save_to_db(self):
-        Database.insert(UserConstants.COLLECTION, self.json())
+        db.session.add(self)
 
 
     def json(self):
@@ -80,36 +89,35 @@ class User(object):
 
     @classmethod
     def find_by_email(cls, email):
-        return cls(**Database.find_one(UserConstants.COLLECTION,{'email': email}))
+        return cls.query.filter_by(email=email).first()
+        #return cls(**db.find_one(UserConstants.COLLECTION,{'email': email}))
 
     @classmethod
     def find_by_username(cls, username):
-        return cls(**Database.find_one(UserConstants.COLLECTION,{'username': username}))
+        return cls.query.filter_by(username=username).first()
+        #return cls(**db.find_one(UserConstants.COLLECTION,{'username': username}))
 
     @classmethod
     def find_all(cls):
-        return [cls(**elem) for elem in Database.find(UserConstants.COLLECTION,{})]
+        return User.query.all()
+        #return [cls(**elem) for elem in db.find(UserConstants.COLLECTION,{})]
 
     def get_alerts(self):
         return Alert.find_by_user_email(self.email)
 
     @classmethod
-    def find_by_id(cls, user_id):
-        return cls(**Database.find_one(UserConstants.COLLECTION, {'_id': user_id}))
+    def find_by_id(cls, _id):
+        return User.query.filter_by(_id=_id).first()
 
     def deactivate(self):
         self.active = False
-        self.save_to_mongo()
+        self.save_to_db()
 
     def activate(self):
         self.active = True
-        self.save_to_mongo()
+        self.save_to_mdb()
 
-    def save_to_mongo(self):
-        Database.update(UserConstants.COLLECTION, {"_id": self._id}, self.json())
 
-    def delete(self):
-        Database.remove(UserConstants.COLLECTION, {'_id': self._id})
 
     def is_active(self):
         return self.active
@@ -126,4 +134,18 @@ class User(object):
         return False
 
     #def get_users(self):
-    #    return User.find_all()
+    #return User.find_all()
+    def save_to_db(self):
+
+        db.session.add(self)
+        db.session.commit()
+
+    def delete_from_db(self):
+
+        db.session.delete(self)
+        db.session.commit()
+
+    @classmethod
+    def find_by_username(cls, username):
+
+        return cls.query.filter_by(username=username).first()  # SELECT * FROM items WHERE name = name LIMIT 1

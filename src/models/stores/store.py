@@ -1,5 +1,5 @@
 import uuid
-from src.common.database import Database
+from src.common.database import db
 import src.models.stores.constants as StoreConstants
 import src.models.stores.errors as StoreErrors
 

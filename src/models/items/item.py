@@ -5,7 +5,7 @@ import requests
 import re
 import src.models.items.constants as ItemConstants
 
-from src.common.database import Database
+from src.common.database import db
 from src.models.stores.store import Store
 
 

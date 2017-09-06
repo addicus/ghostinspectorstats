@@ -1,16 +1,20 @@
 from flask import Flask
 from flask import render_template
 from flask.ext.login import LoginManager
-
-from src.common.database import Database
+from flask_sqlalchemy import SQLAlchemy
+from src.common.database import db
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
+
+
 app.config.from_object('config')
 app.secret_key = "123"
 
 @app.before_first_request
-def init_db():
-    Database.initialize()
+def create_tables():
+
+    db.create_all()
 
 @app.route('/')
 def home():

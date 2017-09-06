@@ -27,7 +27,7 @@ def login():
 
                 user = User.find_by_username(username)
                 user.authenticated=True
-                user.save_to_mongo()
+                user.save_to_db()
                 login_user(user, remember=True)
 
                 return redirect(url_for('home'))
